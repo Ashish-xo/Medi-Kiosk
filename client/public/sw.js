@@ -3,7 +3,7 @@
 //  - API calls: never cached (network only) — the app's offline mode handles those
 //  - Navigation: network-first, cache '/index.html' for offline reload
 //  - Hashed assets (JS/CSS): cache-first — Vite hashes names per build, so no stale cache
-const CACHE = 'medi-kiosk-v1';
+const CACHE = 'medi-kiosk-v2';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(

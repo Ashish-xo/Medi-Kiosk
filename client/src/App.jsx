@@ -295,6 +295,9 @@ export default function App() {
   // Mic button label follows the recording state machine
   const micHint = transcribing ? ui(lang, 'transcribing') : listening ? ui(lang, 'tapToStop') : ui(lang, 'tapToSpeak')
 
+  // Append transcript to existing text instead of replacing it — typed words survive
+  const appendTo = (setter) => (t) => setter(prev => (prev ? prev + ' ' : '') + t)
+
   // language picker
   const LangPicker = ({ small }) => (
     <div className={small ? 'lang-picker small' : 'lang-picker'}>
@@ -371,7 +374,7 @@ export default function App() {
               <textarea rows={4} value={note} placeholder={ui(lang, 'typeHere')}
                 onChange={e => setNote(e.target.value)} />
               <button className={'mic' + (listening ? ' listening' : '') + (transcribing ? ' transcribing' : '')}
-                onClick={() => startListening((t) => setNote(t))}
+                onClick={() => startListening(appendTo(setNote))}
                 title={micHint} aria-label={micHint}>
                 <MicIcon listening={listening} />
                 <span className="mic-hint">{micHint}</span>
@@ -464,7 +467,7 @@ export default function App() {
                 placeholder={ui(lang, 'typeHere')}
                 onChange={e => setOtherText(e.target.value)} autoFocus />
               <button className={'mic' + (listening ? ' listening' : '') + (transcribing ? ' transcribing' : '')}
-                onClick={() => startListening((t) => setOtherText(t))}
+                onClick={() => startListening(appendTo(setOtherText))}
                 title={micHint} aria-label={micHint}>
                 <MicIcon listening={listening} />
                 <span className="mic-hint">{micHint}</span>
@@ -498,7 +501,7 @@ export default function App() {
                 placeholder={ui(lang, 'typeHere')}
                 onChange={e => setText(e.target.value)} />
               <button className={'mic' + (listening ? ' listening' : '') + (transcribing ? ' transcribing' : '')}
-                onClick={() => startListening((t) => setText(t))}
+                onClick={() => startListening(appendTo(setText))}
                 title={micHint} aria-label={micHint}>
                 <MicIcon listening={listening} />
                 <span className="mic-hint">{micHint}</span>
