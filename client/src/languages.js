@@ -94,9 +94,10 @@ function recognizeServer(langCode, onPartial) {
         src.connect(analyser)
         const data = new Uint8Array(analyser.frequencyBinCount)
 
-        const SILENCE_MS = 1500   // stop 1.5s after speech ends
+        const SILENCE_MS = 2500   // stop 2.5s after speech ends (tolerant of natural pauses)
         const MIN_TALK_MS = 1200  // don't auto-stop before this much recording
-        const MAX_MS = 15000      // hard backstop
+        const MAX_MS = 20000      // hard backstop
+        const NO_SPEECH_MS = 6000 // if the patient never spoke, stop early instead of 20s of silence
         const SILENCE_THRESHOLD = 8
         let silentSince = null
         let startedAt = Date.now()
@@ -109,6 +110,10 @@ function recognizeServer(langCode, onPartial) {
           if (avg > SILENCE_THRESHOLD) {
             sawAudio = true
             silentSince = null
+          } else if (!sawAudio && Date.now() - startedAt > NO_SPEECH_MS) {
+            // nothing was ever said — stop so we don't record 20s of silence
+            if (rec.state !== 'inactive') rec.stop()
+            return
           } else if (sawAudio && Date.now() - startedAt > MIN_TALK_MS) {
             if (!silentSince) silentSince = Date.now()
             else if (Date.now() - silentSince >= SILENCE_MS) {
