@@ -15,13 +15,15 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  min-height: 100dvh; /* dynamic viewport — fixes Android URL-bar hiding content */
 }
 
 .kiosk {
   min-height: 100vh;
+  min-height: 100dvh;
   max-width: 720px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 24px 24px calc(24px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -320,3 +322,31 @@ body {
 /* "other" writing panel on first question */
 .other-panel { text-align: center; }
 .other-panel .sub2 { margin-bottom: 6px; }
+
+/* ── mobile optimizations ── */
+@media (max-width: 480px) {
+  .kiosk { padding: 16px calc(16px + env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left)); gap: 14px; }
+  .start-screen h1 { font-size: 2rem; }
+  .question-area h2 { font-size: 1.35rem; }
+  .options { gap: 10px; }
+  .option { padding: 20px 14px; font-size: 1.1rem; min-height: 72px; border-radius: 14px; }
+  .form input, .text-input textarea { padding: 14px; font-size: 1rem; }
+  .primary { font-size: 1.1rem; padding: 14px 20px; }
+  .primary.big { padding: 16px; font-size: 1.2rem; }
+  .voice-row { gap: 10px; }
+  .mic { width: 56px; height: 56px; }
+  .mic-hint { font-size: .5rem; }
+  .topbar { gap: 8px; }
+  .count { font-size: .8rem; }
+  .lang-current { font-size: .85rem; padding: 6px 12px; }
+  .red-banner { font-size: .9rem; padding: 10px 12px; }
+  .note-actions { flex-direction: column; align-items: center; }
+  .note-actions button { width: 100%; max-width: 280px; }
+  .qa { grid-template-columns: 1fr; gap: 4px; }
+  .qa .a { text-align: left; }
+}
+
+/* narrow phones — single column options */
+@media (max-width: 360px) {
+  .options { grid-template-columns: 1fr; }
+}

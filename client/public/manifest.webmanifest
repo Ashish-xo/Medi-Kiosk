@@ -1,0 +1,15 @@
+{
+  "name": "MediKiosk — Patient Intake",
+  "short_name": "MediKiosk",
+  "description": "Give your health history by voice or tap, before you see the doctor.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e1a2b",
+  "theme_color": "#0e1a2b",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
