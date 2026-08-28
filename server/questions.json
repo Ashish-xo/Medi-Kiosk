@@ -1,0 +1,294 @@
+[
+  {
+    "id": "cc",
+    "section": "chief_complaint",
+    "sort_order": 1,
+    "type": "choice",
+    "text_hi": "आपकी मुख्य समस्या क्या है? (बोलें या दबाएं)",
+    "text_en": "What is your main problem? (speak or tap)",
+    "options": [
+      { "value": "fever", "label_hi": "बुखार", "label_en": "Fever" },
+      { "value": "cough", "label_hi": "खांसी", "label_en": "Cough" },
+      { "value": "headache", "label_hi": "सिर दर्द", "label_en": "Headache" },
+      { "value": "abdominal pain", "label_hi": "पेट दर्द", "label_en": "Abdominal pain" },
+      { "value": "chest pain", "label_hi": "सीने में दर्द", "label_en": "Chest pain" },
+      { "value": "joint pain", "label_hi": "जोड़ों का दर्द", "label_en": "Joint pain" },
+      { "value": "dizziness", "label_hi": "चक्कर", "label_en": "Dizziness" },
+      { "value": "other", "label_hi": "अन्य", "label_en": "Other" }
+    ],
+    "next": "cc_start",
+    "next_by_answer": { "chest pain": "cp_start" }
+  },
+  {
+    "id": "cc_start",
+    "section": "hpi",
+    "sort_order": 1,
+    "type": "choice",
+    "text_hi": "यह समस्या कब शुरू हुई?",
+    "text_en": "When did it start?",
+    "options": [
+      { "value": "today", "label_hi": "आज", "label_en": "Today" },
+      { "value": "1-3 days ago", "label_hi": "1-3 दिन पहले", "label_en": "1-3 days ago" },
+      { "value": "4-7 days ago", "label_hi": "4-7 दिन पहले", "label_en": "4-7 days ago" },
+      { "value": "1-4 weeks ago", "label_hi": "1-4 हफ्ते पहले", "label_en": "1-4 weeks ago" },
+      { "value": "more than a month", "label_hi": "एक महीने से ज्यादा", "label_en": "More than a month" }
+    ],
+    "next": "cc_severity"
+  },
+  {
+    "id": "cc_severity",
+    "section": "hpi",
+    "sort_order": 2,
+    "type": "choice",
+    "text_hi": "कितनी तीव्र है?",
+    "text_en": "How severe is it?",
+    "options": [
+      { "value": "mild", "label_hi": "हल्का", "label_en": "Mild" },
+      { "value": "moderate", "label_hi": "मध्यम", "label_en": "Moderate" },
+      { "value": "severe", "label_hi": "गंभीर", "label_en": "Severe" }
+    ],
+    "next": "past_illness"
+  },
+  {
+    "id": "cp_start",
+    "section": "hpi",
+    "sort_order": 1,
+    "type": "choice",
+    "text_hi": "दर्द कब शुरू हुआ?",
+    "text_en": "When did the pain start?",
+    "options": [
+      { "value": "today", "label_hi": "आज", "label_en": "Today" },
+      { "value": "1-3 days ago", "label_hi": "1-3 दिन पहले", "label_en": "1-3 days ago" },
+      { "value": "4-7 days ago", "label_hi": "4-7 दिन पहले", "label_en": "4-7 days ago" },
+      { "value": "more than a week", "label_hi": "एक हफ्ते से ज्यादा", "label_en": "More than a week" }
+    ],
+    "next": "cp_character"
+  },
+  {
+    "id": "cp_character",
+    "section": "hpi",
+    "sort_order": 2,
+    "type": "choice",
+    "text_hi": "दर्द कैसा लगता है?",
+    "text_en": "How does the pain feel?",
+    "options": [
+      { "value": "sharp", "label_hi": "चुभने वाला", "label_en": "Sharp" },
+      { "value": "squeezing", "label_hi": "दबाव जैसा", "label_en": "Squeezing / pressure" },
+      { "value": "burning", "label_hi": "जलन जैसा", "label_en": "Burning" },
+      { "value": "dull", "label_hi": "हल्का दर्द", "label_en": "Dull" }
+    ],
+    "next": "cp_radiation"
+  },
+  {
+    "id": "cp_radiation",
+    "section": "hpi",
+    "sort_order": 3,
+    "type": "choice",
+    "text_hi": "क्या दर्द कहीं और फैलता है?",
+    "text_en": "Does it spread anywhere else?",
+    "options": [
+      { "value": "no", "label_hi": "नहीं", "label_en": "No" },
+      { "value": "left arm", "label_hi": "बायीं बांह में", "label_en": "Left arm" },
+      { "value": "jaw", "label_hi": "जबड़े में", "label_en": "Jaw" },
+      { "value": "back", "label_hi": "पीठ में", "label_en": "Back" },
+      { "value": "neck", "label_hi": "गर्दन में", "label_en": "Neck" }
+    ],
+    "next": "cp_breath"
+  },
+  {
+    "id": "cp_breath",
+    "section": "hpi",
+    "sort_order": 4,
+    "type": "choice",
+    "text_hi": "क्या सांस लेने में तकलीफ हो रही है?",
+    "text_en": "Any breathlessness?",
+    "options": [
+      { "value": "no", "label_hi": "नहीं", "label_en": "No" },
+      { "value": "yes", "label_hi": "हाँ", "label_en": "Yes" }
+    ],
+    "next": "cp_worse"
+  },
+  {
+    "id": "cp_worse",
+    "section": "hpi",
+    "sort_order": 5,
+    "type": "choice",
+    "text_hi": "किस चीज़ से दर्द बढ़ता है?",
+    "text_en": "What makes it worse?",
+    "options": [
+      { "value": "exertion", "label_hi": "मेहनत से", "label_en": "Exertion" },
+      { "value": "rest", "label_hi": "आराम में", "label_en": "At rest" },
+      { "value": "lying down", "label_hi": "लेटने से", "label_en": "Lying down" },
+      { "value": "eating", "label_hi": "खाने से", "label_en": "Eating" }
+    ],
+    "next": "past_illness"
+  },
+  {
+    "id": "past_illness",
+    "section": "past",
+    "sort_order": 1,
+    "type": "choice",
+    "text_hi": "कोई पुरानी बीमारी है?",
+    "text_en": "Any ongoing illness?",
+    "options": [
+      { "value": "none", "label_hi": "नहीं", "label_en": "None" },
+      { "value": "diabetes", "label_hi": "मधुमेह", "label_en": "Diabetes" },
+      { "value": "high BP", "label_hi": "हाई बीपी", "label_en": "High BP" },
+      { "value": "asthma", "label_hi": "अस्थमा", "label_en": "Asthma" },
+      { "value": "thyroid", "label_hi": "थायराइड", "label_en": "Thyroid" },
+      { "value": "heart disease", "label_hi": "हृदय रोग", "label_en": "Heart disease" }
+    ],
+    "next": "past_surgery"
+  },
+  {
+    "id": "past_surgery",
+    "section": "past",
+    "sort_order": 2,
+    "type": "choice",
+    "text_hi": "कोई पुराना ऑपरेशन हुआ है?",
+    "text_en": "Any past surgery?",
+    "options": [
+      { "value": "no", "label_hi": "नहीं", "label_en": "No" },
+      { "value": "yes", "label_hi": "हाँ", "label_en": "Yes" }
+    ],
+    "next": "medications"
+  },
+  {
+    "id": "medications",
+    "section": "meds",
+    "sort_order": 1,
+    "type": "text",
+    "text_hi": "फिलहाल कोई दवा ले रहे हैं? (नाम बोलें या लिखें)",
+    "text_en": "Any current medicines? (speak or type)",
+    "next": "allergies"
+  },
+  {
+    "id": "allergies",
+    "section": "meds",
+    "sort_order": 2,
+    "type": "choice",
+    "text_hi": "किसी दवा से एलर्जी है?",
+    "text_en": "Any drug allergies?",
+    "options": [
+      { "value": "no", "label_hi": "नहीं", "label_en": "No" },
+      { "value": "yes", "label_hi": "हाँ", "label_en": "Yes" }
+    ],
+    "next": "family_history"
+  },
+  {
+    "id": "family_history",
+    "section": "family",
+    "sort_order": 1,
+    "type": "choice",
+    "text_hi": "परिवार में किसी को यही बीमारी है?",
+    "text_en": "Does anyone in your family have this?",
+    "options": [
+      { "value": "no", "label_hi": "नहीं", "label_en": "No" },
+      { "value": "yes", "label_hi": "हाँ", "label_en": "Yes" }
+    ],
+    "next": "smoking"
+  },
+  {
+    "id": "smoking",
+    "section": "personal",
+    "sort_order": 1,
+    "type": "choice",
+    "text_hi": "धूम्रपान करते हैं?",
+    "text_en": "Do you smoke?",
+    "options": [
+      { "value": "no", "label_hi": "नहीं", "label_en": "No" },
+      { "value": "yes", "label_hi": "हाँ", "label_en": "Yes" },
+      { "value": "quit", "label_hi": "छोड़ दिया", "label_en": "Quit" }
+    ],
+    "next": "alcohol"
+  },
+  {
+    "id": "alcohol",
+    "section": "personal",
+    "sort_order": 2,
+    "type": "choice",
+    "text_hi": "शराब पीते हैं?",
+    "text_en": "Do you drink alcohol?",
+    "options": [
+      { "value": "no", "label_hi": "नहीं", "label_en": "No" },
+      { "value": "yes", "label_hi": "हाँ", "label_en": "Yes" },
+      { "value": "occasionally", "label_hi": "कभी-कभी", "label_en": "Occasionally" }
+    ],
+    "next": "sleep"
+  },
+  {
+    "id": "sleep",
+    "section": "personal",
+    "sort_order": 3,
+    "type": "choice",
+    "text_hi": "नींद कैसी है?",
+    "text_en": "How is your sleep?",
+    "options": [
+      { "value": "good", "label_hi": "अच्छी", "label_en": "Good" },
+      { "value": "disturbed", "label_hi": "ठीक नहीं", "label_en": "Disturbed" },
+      { "value": "less", "label_hi": "कम", "label_en": "Less" }
+    ],
+    "next": "ayush_prakriti"
+  },
+  {
+    "id": "ayush_prakriti",
+    "section": "ayush",
+    "sort_order": 1,
+    "type": "choice",
+    "text_hi": "आयुर्वेद खंड — आपकी शरीर प्रकृति क्या लगती है? (पता न हो तो 'पता नहीं')",
+    "text_en": "Ayurveda section — What is your body nature (Prakriti)?",
+    "options": [
+      { "value": "vata", "label_hi": "वात", "label_en": "Vata" },
+      { "value": "pitta", "label_hi": "पित्त", "label_en": "Pitta" },
+      { "value": "kapha", "label_hi": "कफ", "label_en": "Kapha" },
+      { "value": "vata-pitta", "label_hi": "वात-पित्त", "label_en": "Vata-Pitta" },
+      { "value": "pitta-kapha", "label_hi": "पित्त-कफ", "label_en": "Pitta-Kapha" },
+      { "value": "vata-kapha", "label_hi": "वात-कफ", "label_en": "Vata-Kapha" },
+      { "value": "not sure", "label_hi": "पता नहीं", "label_en": "Not sure" }
+    ],
+    "next": "ayush_agni"
+  },
+  {
+    "id": "ayush_agni",
+    "section": "ayush",
+    "sort_order": 2,
+    "type": "choice",
+    "text_hi": "आपकी भूख (अग्नि) कैसी है?",
+    "text_en": "How is your appetite (Agni)?",
+    "options": [
+      { "value": "good", "label_hi": "अच्छी", "label_en": "Good" },
+      { "value": "irregular", "label_hi": "अनियमित", "label_en": "Irregular" },
+      { "value": "low", "label_hi": "कम", "label_en": "Low" },
+      { "value": "high", "label_hi": "बहुत", "label_en": "High" }
+    ],
+    "next": "ayush_koshtha"
+  },
+  {
+    "id": "ayush_koshtha",
+    "section": "ayush",
+    "sort_order": 3,
+    "type": "choice",
+    "text_hi": "मल की प्रकृति (कोष्ठ) कैसी है?",
+    "text_en": "What is your bowel nature (Koshtha)?",
+    "options": [
+      { "value": "normal", "label_hi": "सामान्य", "label_en": "Normal" },
+      { "value": "constipated", "label_hi": "कब्ज", "label_en": "Constipated" },
+      { "value": "loose", "label_hi": "ढीला", "label_en": "Loose" }
+    ],
+    "next": "ayush_sattva"
+  },
+  {
+    "id": "ayush_sattva",
+    "section": "ayush",
+    "sort_order": 4,
+    "type": "choice",
+    "text_hi": "आपकी मानसिक प्रकृति (सत्त्व) कैसी है?",
+    "text_en": "What is your mental nature (Sattva)?",
+    "options": [
+      { "value": "calm", "label_hi": "शांत", "label_en": "Calm" },
+      { "value": "anxious", "label_hi": "चिंतित", "label_en": "Anxious" },
+      { "value": "moody", "label_hi": "मिजाज बदलता है", "label_en": "Moody" }
+    ],
+    "next": null
+  }
+]

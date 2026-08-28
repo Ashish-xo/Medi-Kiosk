@@ -1,0 +1,112 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0e1a2b;
+  --panel: #152742;
+  --accent: #38bdf8;
+  --accent2: #a78bfa;
+  --danger: #f87171;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+}
+
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.kiosk {
+  min-height: 100vh;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* start screen */
+.start-screen, .done-screen {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+.start-screen h1 { font-size: 2.6rem; }
+.sub { color: var(--muted); margin: 10px 0 20px; }
+.form { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 360px; }
+.form input, .text-input textarea {
+  background: var(--panel);
+  border: 1px solid #1e3a5f;
+  border-radius: 12px;
+  color: var(--text);
+  padding: 16px;
+  font-size: 1.1rem;
+}
+.form input:focus, .text-input textarea:focus { outline: 2px solid var(--accent); }
+
+/* language toggle */
+.lang-row { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
+.lang-row.small { justify-content: flex-end; }
+.lang-row button {
+  background: var(--panel); color: var(--text);
+  border: 1px solid #1e3a5f; border-radius: 999px;
+  padding: 8px 16px; font-size: 1rem; cursor: pointer;
+}
+.lang-row button.active { background: var(--accent); color: #0b1220; border-color: var(--accent); }
+
+/* top bar */
+.topbar { display: flex; align-items: center; gap: 12px; }
+.progress { flex: 1; background: var(--panel); height: 10px; border-radius: 999px; overflow: hidden; }
+.bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .3s; }
+.count { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* question */
+.question-area h2 { font-size: 1.6rem; line-height: 1.4; margin: 12px 0; min-height: 2.4em; }
+.options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.option {
+  background: var(--panel); color: var(--text);
+  border: 1px solid #1e3a5f; border-radius: 16px;
+  padding: 26px 16px; font-size: 1.25rem; cursor: pointer;
+  transition: transform .1s, border-color .1s;
+  min-height: 88px;
+}
+.option:active { transform: scale(.97); border-color: var(--accent); }
+.option:disabled { opacity: .6; }
+
+/* text input */
+.text-input { display: flex; flex-direction: column; gap: 12px; }
+.text-input textarea { font-size: 1.2rem; }
+
+/* buttons */
+.primary {
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  color: #0b1220; border: none; border-radius: 14px;
+  padding: 14px 24px; font-size: 1.2rem; font-weight: 700; cursor: pointer;
+}
+.primary.big { padding: 20px; font-size: 1.4rem; }
+.primary:disabled { opacity: .5; cursor: not-allowed; }
+
+/* voice + speaker */
+.voice-row { display: flex; gap: 12px; justify-content: center; margin-top: auto; }
+.mic, .speaker {
+  background: var(--panel); color: var(--text);
+  border: 1px solid #1e3a5f; border-radius: 999px;
+  padding: 14px 22px; font-size: 1.1rem; cursor: pointer;
+}
+
+/* red flag */
+.red-banner {
+  background: #3f1118; color: #fecaca;
+  border: 1px solid var(--danger); border-radius: 12px;
+  padding: 14px 16px; font-weight: 700; text-align: center;
+  animation: pulse 1.2s infinite;
+}
+@keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(248,113,113,.15); } }
+
+/* done */
+.done-screen .check { font-size: 4rem; }
+.done-screen h1 { font-size: 2rem; margin: 8px 0; }
+
+.error { color: var(--danger); text-align: center; }
