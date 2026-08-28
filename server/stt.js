@@ -1,16 +1,27 @@
 // Speech-to-text proxy: receives recorded audio from the kiosk, converts to
-// 16kHz mono PCM WAV, and transcribes via the free Google speech endpoint.
-// This lets Firefox (which has no SpeechRecognition API) do voice input.
-// The Google key is NOT hardcoded — set GOOGLE_STT_KEY in .env / Railway vars.
-import { execFile } from 'node:child_process';
+// 16kHz mono PCM WAV, then transcribes with the configured provider.
+//
+// Providers (STT_PROVIDER env):
+//   whisper  → local faster-whisper (offline, great for hospital/demo; model in whisper-venv)
+//   google   → Google's free speech endpoint (needs GOOGLE_STT_KEY)
+//   auto     → whisper if the local venv exists, else google  (DEFAULT)
+//
+// Why whisper: no internet needed, open-source, strong Hindi + Indian-language
+// support. Why google fallback: no ~460MB model download on a server deploy.
+import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { randomBytes } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 
 const exec = promisify(execFile);
 const TMP = os.tmpdir();
+const __dirname = path.dirname(new URL(import.meta.url).pathname);
+
+const WHISPER_PY = path.join(__dirname, 'whisper-venv', 'bin', 'python');
+const WHISPER_SCRIPT = path.join(__dirname, 'whisper_server.py');
 
 // Google's free speech recognition endpoint (same one Chromium uses for
 // webkitSpeechRecognition — no paid key required, supports Indian languages).
@@ -27,13 +38,70 @@ const LANG_MAP = {
   ur: 'ur-IN', bho: 'hi-IN', pah: 'hi-IN', as: 'as-IN', or: 'or-IN',
 };
 
-// Convert any input audio (webm/ogg/wav) to 16kHz mono WAV for the STT API.
+// Convert any input audio (webm/ogg/wav) to 16kHz mono WAV for the STT engines.
 async function toWav16k(inputPath, outPath) {
   await exec('ffmpeg', [
     '-y', '-i', inputPath,
     '-ac', '1', '-ar', '16000', '-sample_fmt', 's16',
     outPath,
   ], { timeout: 30000 });
+}
+
+// ---------- local faster-whisper worker (persistent) ----------
+
+let whisperProc = null;
+const whisperPending = []; // {resolve, reject} — one per in-flight request
+
+function ensureWhisper() {
+  if (whisperProc) return whisperProc;
+  whisperProc = spawn(WHISPER_PY, [WHISPER_SCRIPT], {
+    stdio: ['pipe', 'pipe', 'pipe'], // pipe stderr too — 'inherit' makes child.stderr null!
+    env: process.env,
+  });
+  let buf = '';
+  whisperProc.stdout.on('data', (chunk) => {
+    buf += chunk.toString();
+    let idx;
+    while ((idx = buf.indexOf('\n')) !== -1) {
+      const line = buf.slice(0, idx).trim();
+      buf = buf.slice(idx + 1);
+      const cb = whisperPending.shift();
+      if (!cb) continue;
+      try {
+        const msg = JSON.parse(line);
+        if (msg.error) cb.reject(new Error(msg.error));
+        else cb.resolve(msg.text);
+      } catch (e) { cb.reject(new Error('whisper: bad response')); }
+    }
+  });
+  whisperProc.stderr.on('data', (d) => {
+    if (process.env.DEBUG_STT) process.stderr.write(`[whisper] ${d}`);
+  });
+  whisperProc.on('exit', (code) => {
+    whisperProc = null;
+    const err = new Error(`whisper worker exited (${code})`);
+    while (whisperPending.length) whisperPending.shift().reject(err);
+  });
+  return whisperProc;
+}
+
+function whisperTranscribe(wavPath, langCode) {
+  return new Promise((resolve, reject) => {
+    const p = ensureWhisper();
+    whisperPending.push({ resolve, reject });
+    // faster-whisper wants 2-letter codes: hi-IN → hi
+    const code = (LANG_MAP[langCode] || 'hi-IN').slice(0, 2);
+    p.stdin.write(JSON.stringify({ audio: wavPath, lang: code }) + '\n');
+    setTimeout(() => reject(new Error('whisper: timeout')), 120000).unref();
+  });
+}
+
+function pickProvider() {
+  const want = process.env.STT_PROVIDER || 'auto';
+  if (want === 'whisper') return 'whisper';
+  if (want === 'google') return 'google';
+  // auto: local whisper wins when it's installed (offline-capable)
+  return existsSync(WHISPER_PY) ? 'whisper' : 'google';
 }
 
 // Transcribe a buffer of recorded audio. Returns the recognized text or ''.
@@ -44,10 +112,15 @@ export async function transcribeAudio(buffer, langCode = 'hi') {
   try {
     await writeFile(inPath, buffer);
     await toWav16k(inPath, wavPath);
-    const wav = await readFile(wavPath);
-    const url = getSttUrl(langCode);
-    if (!url) throw new Error('Speech-to-text not configured (set GOOGLE_STT_KEY)');
 
+    if (pickProvider() === 'whisper') {
+      return await whisperTranscribe(wavPath, langCode);
+    }
+
+    const url = getSttUrl(langCode);
+    if (!url) throw new Error('Speech-to-text not configured (set GOOGLE_STT_KEY or STT_PROVIDER=whisper)');
+
+    const wav = await readFile(wavPath);
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'audio/l16; rate=16000' },
