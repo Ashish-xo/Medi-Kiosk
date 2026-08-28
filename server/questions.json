@@ -106,12 +106,39 @@
       { "value": "no", "label_hi": "नहीं", "label_en": "No" },
       { "value": "yes", "label_hi": "हाँ", "label_en": "Yes" }
     ],
+    "next": "cp_severity"
+  },
+  {
+    "id": "cp_severity",
+    "section": "hpi",
+    "sort_order": 5,
+    "type": "choice",
+    "text_hi": "दर्द कितना तेज़ है?",
+    "text_en": "How severe is the pain?",
+    "options": [
+      { "value": "mild", "label_hi": "हल्का", "label_en": "Mild" },
+      { "value": "moderate", "label_hi": "मध्यम", "label_en": "Moderate" },
+      { "value": "severe", "label_hi": "बहुत तेज़", "label_en": "Severe" }
+    ],
+    "next": "cp_dizziness"
+  },
+  {
+    "id": "cp_dizziness",
+    "section": "hpi",
+    "sort_order": 6,
+    "type": "choice",
+    "text_hi": "क्या चक्कर भी आ रहे हैं?",
+    "text_en": "Do you also feel dizzy?",
+    "options": [
+      { "value": "no", "label_hi": "नहीं", "label_en": "No" },
+      { "value": "yes", "label_hi": "हाँ", "label_en": "Yes" }
+    ],
     "next": "cp_worse"
   },
   {
     "id": "cp_worse",
     "section": "hpi",
-    "sort_order": 5,
+    "sort_order": 7,
     "type": "choice",
     "text_hi": "किस चीज़ से दर्द बढ़ता है?",
     "text_en": "What makes it worse?",
@@ -235,15 +262,15 @@
     "section": "ayush",
     "sort_order": 1,
     "type": "choice",
-    "text_hi": "आयुर्वेद खंड — आपकी शरीर प्रकृति क्या लगती है? (पता न हो तो 'पता नहीं')",
-    "text_en": "Ayurveda section — What is your body nature (Prakriti)?",
+    "text_hi": "आयुर्वेद डॉक्टर की मदद के लिए — क्या आपको अपनी शरीर प्रकृति पता है? (पता न हो तो 'पता नहीं' चुनें)",
+    "text_en": "For the Ayurveda doctor — do you know your body nature? (If not, tap 'Not sure')",
     "options": [
-      { "value": "vata", "label_hi": "वात", "label_en": "Vata" },
-      { "value": "pitta", "label_hi": "पित्त", "label_en": "Pitta" },
-      { "value": "kapha", "label_hi": "कफ", "label_en": "Kapha" },
-      { "value": "vata-pitta", "label_hi": "वात-पित्त", "label_en": "Vata-Pitta" },
-      { "value": "pitta-kapha", "label_hi": "पित्त-कफ", "label_en": "Pitta-Kapha" },
-      { "value": "vata-kapha", "label_hi": "वात-कफ", "label_en": "Vata-Kapha" },
+      { "value": "vata", "label_hi": "वात (पतला, फुर्तीला)", "label_en": "Vata (slim, quick)" },
+      { "value": "pitta", "label_hi": "पित्त (गर्म, तीखा)", "label_en": "Pitta (warm, sharp)" },
+      { "value": "kapha", "label_hi": "कफ (भारी, शांत)", "label_en": "Kapha (heavy, calm)" },
+      { "value": "vata-pitta", "label_hi": "वात-पित्त (फुर्तीला, जोशीला)", "label_en": "Vata-Pitta (quick, fiery)" },
+      { "value": "pitta-kapha", "label_hi": "पित्त-कफ (मज़बूत, स्थिर)", "label_en": "Pitta-Kapha (strong, steady)" },
+      { "value": "vata-kapha", "label_hi": "वात-कफ (रचनात्मक, शांत)", "label_en": "Vata-Kapha (creative, calm)" },
       { "value": "not sure", "label_hi": "पता नहीं", "label_en": "Not sure" }
     ],
     "next": "ayush_agni"
@@ -253,13 +280,14 @@
     "section": "ayush",
     "sort_order": 2,
     "type": "choice",
-    "text_hi": "आपकी भूख (अग्नि) कैसी है?",
-    "text_en": "How is your appetite (Agni)?",
+    "text_hi": "आपकी भूख आमतौर पर कैसी रहती है?",
+    "text_en": "How is your appetite usually?",
     "options": [
       { "value": "good", "label_hi": "अच्छी", "label_en": "Good" },
-      { "value": "irregular", "label_hi": "अनियमित", "label_en": "Irregular" },
-      { "value": "low", "label_hi": "कम", "label_en": "Low" },
-      { "value": "high", "label_hi": "बहुत", "label_en": "High" }
+      { "value": "irregular", "label_hi": "कभी ज्यादा कभी कम", "label_en": "Irregular" },
+      { "value": "low", "label_hi": "कम लगती है", "label_en": "Low" },
+      { "value": "high", "label_hi": "हमेशा ज्यादा", "label_en": "High" },
+      { "value": "not sure", "label_hi": "पता नहीं", "label_en": "Not sure" }
     ],
     "next": "ayush_koshtha"
   },
@@ -268,12 +296,13 @@
     "section": "ayush",
     "sort_order": 3,
     "type": "choice",
-    "text_hi": "मल की प्रकृति (कोष्ठ) कैसी है?",
-    "text_en": "What is your bowel nature (Koshtha)?",
+    "text_hi": "आपका पेट आमतौर पर कैसे साफ होता है?",
+    "text_en": "How does your stomach usually clear?",
     "options": [
-      { "value": "normal", "label_hi": "सामान्य", "label_en": "Normal" },
-      { "value": "constipated", "label_hi": "कब्ज", "label_en": "Constipated" },
-      { "value": "loose", "label_hi": "ढीला", "label_en": "Loose" }
+      { "value": "normal", "label_hi": "रोज साफ होता है", "label_en": "Regularly" },
+      { "value": "constipated", "label_hi": "कब्ज रहती है", "label_en": "Constipated" },
+      { "value": "loose", "label_hi": "ढीला-ढीला रहता है", "label_en": "Loose" },
+      { "value": "not sure", "label_hi": "पता नहीं", "label_en": "Not sure" }
     ],
     "next": "ayush_sattva"
   },
@@ -282,12 +311,13 @@
     "section": "ayush",
     "sort_order": 4,
     "type": "choice",
-    "text_hi": "आपकी मानसिक प्रकृति (सत्त्व) कैसी है?",
-    "text_en": "What is your mental nature (Sattva)?",
+    "text_hi": "आपका स्वभाव आमतौर पर कैसा है?",
+    "text_en": "What is your usual nature?",
     "options": [
-      { "value": "calm", "label_hi": "शांत", "label_en": "Calm" },
-      { "value": "anxious", "label_hi": "चिंतित", "label_en": "Anxious" },
-      { "value": "moody", "label_hi": "मिजाज बदलता है", "label_en": "Moody" }
+      { "value": "calm", "label_hi": "शांत रहता हूँ", "label_en": "Calm" },
+      { "value": "anxious", "label_hi": "जल्दी चिंता हो जाती है", "label_en": "Anxious" },
+      { "value": "moody", "label_hi": "मूड बदलता रहता है", "label_en": "Moody" },
+      { "value": "not sure", "label_hi": "पता नहीं", "label_en": "Not sure" }
     ],
     "next": null
   }

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MediKiosk — Doctor Console</title>
+<link rel="stylesheet" href="/doctor.css">
+</head>
+<body>
+<header>
+  <h1>🩺 MediKiosk — Doctor Console</h1>
+  <span class="sub">Patient queue &amp; intake review</span>
+  <span class="badge" id="liveBadge">connecting…</span>
+</header>
+<main>
+  <div class="grid">
+    <div>
+      <div class="panel">
+        <h2>Patient Queue</h2>
+        <div id="queue"><div class="empty">Loading…</div></div>
+      </div>
+    </div>
+    <div class="detail">
+      <div class="panel hidden" id="detailPanel">
+        <h3 id="dName">—</h3>
+        <div class="patient-meta" id="dMeta"></div>
+        <div class="pill-row" id="dPills"></div>
+        <div class="note-box hidden" id="dNoteBox">
+          <h4>⚠️ Patient's own words</h4>
+          <div id="dNote"></div>
+        </div>
+        <div class="ai-card" id="dAICard">
+          <div class="ai-head">
+            <h4>🤖 AI Clinical Summary <span class="ai-badge">AI-drafted · doctor must review</span></h4>
+            <button class="secondary small" id="btnAI">Regenerate</button>
+          </div>
+          <div id="dAI"><div class="empty" style="padding:8px 0">Not generated yet.</div></div>
+        </div>
+        <div class="summary-card" id="dSummary"></div>
+        <div class="section">
+          <h4>Intake Answers</h4>
+          <div id="dAnswers"></div>
+        </div>
+        <div class="section">
+          <h4>Consultation</h4>
+          <label for="fPrescription">Prescription / treatment</label>
+          <textarea id="fPrescription" placeholder="Rx:…"></textarea>
+          <label for="fNotes">Doctor's notes</label>
+          <textarea id="fNotes" placeholder="Clinical notes, advice…"></textarea>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button id="btnSave">Save &amp; Mark Consulted</button>
+            <button class="secondary" id="btnHold">Save Draft</button>
+            <button class="secondary" id="btnPDF">⬇ Export PDF</button>
+          </div>
+        </div>
+      </div>
+      <div class="empty" id="dEmpty">Select a patient from the queue to review their intake.</div>
+    </div>
+  </div>
+</main>
+<div class="saved-toast" id="toast">Saved ✅</div>
+
+<!-- PIN gate -->
+<div class="pin-overlay hidden" id="pinOverlay">
+  <div class="pin-box">
+    <h2>🔒 Doctor Console</h2>
+    <p>Enter the doctor PIN to continue</p>
+    <input type="password" id="pinInput" placeholder="PIN" autocomplete="off">
+    <p class="pin-error" id="pinError"></p>
+    <button id="pinBtn">Unlock</button>
+  </div>
+</div>
+
+<script src="/doctor.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "medi-kiosk",
+  "private": true,
+  "type": "module",
+  "workspaces": ["server", "client"],
+  "scripts": {
+    "build": "npm run build --workspace=client",
+    "start": "node server/index.js",
+    "dev": "cd server && node --watch index.js"
+  }
+}
