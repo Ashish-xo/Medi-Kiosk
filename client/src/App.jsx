@@ -39,7 +39,7 @@ const ui = (lang, key) => {
 }
 
 export default function App() {
-  const [lang, setLang] = useState('hi')
+  const [lang, setLang] = useState('en')
   const [langOpen, setLangOpen] = useState(false)
   const [patient, setPatient] = useState({ name: '', phone: '', age: '' })
   const [visitId, setVisitId] = useState(null)
@@ -62,6 +62,7 @@ export default function App() {
   const [syncing, setSyncing] = useState(false)
   const [synced, setSynced] = useState(false)
   const [listening, setListening] = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
   const [otherPanel, setOtherPanel] = useState(false)
   const [otherText, setOtherText] = useState('')
 
@@ -266,10 +267,16 @@ export default function App() {
     } catch (_) {}
   }
 
-  // Voice input → text. First tap starts listening, second tap stops (esp. in Firefox).
+  // Voice input → text. First tap STARTS recording, second tap STOPS it.
+  // Toggle gives instant feedback: recording (pulsing) → transcribing (spinner)
+  // → done. Taps during "transcribing" are ignored so nothing can double-fire.
   const startListening = async (onText) => {
+    if (transcribing) return
     if (listening) {
+      // second tap: stop the recorder immediately, show "transcribing"
       stopListeningEarly()
+      setListening(false)
+      setTranscribing(true)
       return
     }
     setListening(true); setError('')
@@ -280,9 +287,13 @@ export default function App() {
       setError(err.message)
     } finally {
       setListening(false)
+      setTranscribing(false)
       stopListeningEarly()
     }
   }
+
+  // Mic button label follows the recording state machine
+  const micHint = transcribing ? ui(lang, 'transcribing') : listening ? ui(lang, 'tapToStop') : ui(lang, 'tapToSpeak')
 
   // language picker
   const LangPicker = ({ small }) => (
@@ -359,9 +370,11 @@ export default function App() {
             <div className="voice-input">
               <textarea rows={4} value={note} placeholder={ui(lang, 'typeHere')}
                 onChange={e => setNote(e.target.value)} />
-              <button className={'mic' + (listening ? ' listening' : '')}
-                onClick={() => startListening((t) => setNote(t))}>
+              <button className={'mic' + (listening ? ' listening' : '') + (transcribing ? ' transcribing' : '')}
+                onClick={() => startListening((t) => setNote(t))}
+                title={micHint} aria-label={micHint}>
                 <MicIcon listening={listening} />
+                <span className="mic-hint">{micHint}</span>
               </button>
             </div>
             <div className="note-actions">
@@ -450,9 +463,11 @@ export default function App() {
               <textarea rows={4} value={otherText}
                 placeholder={ui(lang, 'typeHere')}
                 onChange={e => setOtherText(e.target.value)} autoFocus />
-              <button className={'mic' + (listening ? ' listening' : '')}
-                onClick={() => startListening((t) => setOtherText(t))}>
+              <button className={'mic' + (listening ? ' listening' : '') + (transcribing ? ' transcribing' : '')}
+                onClick={() => startListening((t) => setOtherText(t))}
+                title={micHint} aria-label={micHint}>
                 <MicIcon listening={listening} />
+                <span className="mic-hint">{micHint}</span>
               </button>
             </div>
             <button className="primary big" disabled={!otherText.trim() || busy} onClick={submitOther}>
@@ -482,9 +497,11 @@ export default function App() {
               <textarea rows={3} value={text}
                 placeholder={ui(lang, 'typeHere')}
                 onChange={e => setText(e.target.value)} />
-              <button className={'mic' + (listening ? ' listening' : '')}
-                onClick={() => startListening((t) => setText(t))}>
+              <button className={'mic' + (listening ? ' listening' : '') + (transcribing ? ' transcribing' : '')}
+                onClick={() => startListening((t) => setText(t))}
+                title={micHint} aria-label={micHint}>
                 <MicIcon listening={listening} />
+                <span className="mic-hint">{micHint}</span>
               </button>
             </div>
             <button className="primary big" disabled={!text.trim() || busy} onClick={() => answer(text.trim())}>

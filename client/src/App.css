@@ -287,20 +287,26 @@ body {
 .mic {
   background: var(--panel); color: var(--text);
   border: 1px solid #1e3a5f; border-radius: 999px;
-  width: 52px; height: 52px;
-  display: inline-flex; align-items: center; justify-content: center;
-  font-size: 1.4rem; line-height: 1;
-  padding: 0; cursor: pointer;
+  width: 64px; height: 64px;
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  font-size: 1.2rem; line-height: 1;
+  padding: 6px; cursor: pointer;
   transition: background .15s, border-color .15s, transform .1s;
 }
 .mic:hover { border-color: var(--accent); }
 .mic:active { transform: scale(.95); }
 .mic:disabled { opacity: .5; cursor: not-allowed; }
 .mic.listening { background: var(--danger); border-color: var(--danger); animation: mic-pulse 1s infinite; }
+.mic.transcribing { border-color: var(--accent); opacity: .8; }
+.mic.transcribing svg { animation: mic-spin .8s linear infinite; }
+.mic.transcribing .mic-hint { color: var(--accent); }
+.mic-hint { font-size: .55rem; color: var(--muted); white-space: nowrap; line-height: 1; }
+.mic.listening .mic-hint { color: #fff; }
 @keyframes mic-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(248,113,113,.5); }
   50% { box-shadow: 0 0 0 10px rgba(248,113,113,0); }
 }
+@keyframes mic-spin { to { transform: rotate(360deg); } }
 
 /* note actions (send / skip) */
 .note-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }

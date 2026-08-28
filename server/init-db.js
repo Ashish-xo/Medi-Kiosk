@@ -76,6 +76,7 @@ export async function initDb() {
     ["questions", "translations", "JSONB DEFAULT '{}'"],
     ["summaries", "ai_summary", "TEXT DEFAULT ''"],
     ["summaries", "prescription", "TEXT DEFAULT ''"],
+    ["summaries", "structured_en", "JSONB DEFAULT '{}'"],
   ];
   for (const [table, col, ddl] of cols) {
     const { rows } = await pool.query(

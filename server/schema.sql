@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS summaries (
   ai_summary TEXT DEFAULT '',
   doctor_notes TEXT,
   prescription TEXT DEFAULT '',
+  structured_en JSONB DEFAULT '{}',       -- English version for the doctor
   status TEXT DEFAULT 'draft'
 );
 

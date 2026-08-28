@@ -5,9 +5,9 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import pool from './db.js';
 import { buildSummary, prettyValue } from './summary.js';
-import { generateAISummary } from './ai.js';
+import { generateAISummary, translateStructured } from './ai.js';
 import { visitPDF } from './pdf.js';
-import { transcribeAudio } from './stt.js';
+import { transcribeAudio, warmWhisper } from './stt.js';
 import { randomBytes } from 'node:crypto';
 import QRCode from 'qrcode';
 import { securityHeaders, rateLimit, doctorAuth, sendError } from './security.js';
@@ -109,10 +109,24 @@ async function progress(visitId) {
 // Finalize a visit: build + store summary, mark as waiting for the doctor.
 async function finalizeVisit(visitId) {
   const structured = await buildSummary(visitId);
+
+  // Doctor-facing English copy. The patient answers in their own language;
+  // the doctor reads English. Choice values are already English; free text
+  // (medications, "other", note) gets translated in one LLM call.
+  const { rows: langRows } = await pool.query(
+    `SELECT p.preferred_language FROM visits v JOIN patients p ON p.id = v.patient_id WHERE v.id = $1`,
+    [visitId]
+  );
+  const patientLang = langRows[0]?.preferred_language || 'en';
+  let structured_en = structured;
+  if (patientLang !== 'en') {
+    structured_en = await translateStructured(structured, patientLang);
+  }
+
   await pool.query(
-    `INSERT INTO summaries (visit_id, structured) VALUES ($1,$2)
-     ON CONFLICT (visit_id) DO UPDATE SET structured = EXCLUDED.structured`,
-    [visitId, JSON.stringify(structured)]
+    `INSERT INTO summaries (visit_id, structured, structured_en) VALUES ($1,$2,$3)
+     ON CONFLICT (visit_id) DO UPDATE SET structured = EXCLUDED.structured, structured_en = EXCLUDED.structured_en`,
+    [visitId, JSON.stringify(structured), JSON.stringify(structured_en)]
   );
   await pool.query(`UPDATE visits SET status = 'waiting' WHERE id = $1`, [visitId]);
 
@@ -136,7 +150,7 @@ app.post('/api/visits', rateLimit({ max: 30, windowMs: 10 * 60_000, name: 'visit
     const age = req.body.age;
     const gender = req.body.gender ? String(req.body.gender).trim().slice(0, 20) : null;
     const SUPPORTED_LANGS = ['hi', 'en', 'pa', 'mr', 'gu', 'te', 'kn', 'ta', 'bn', 'ml', 'ur', 'bho', 'pah', 'as', 'or'];
-    const language = SUPPORTED_LANGS.includes(req.body.language) ? req.body.language : 'hi';
+    const language = SUPPORTED_LANGS.includes(req.body.language) ? req.body.language : 'en';
     const ayush_mode = req.body.ayush_mode !== false;
 
     if (name.length < 2 || name.length > 80)
@@ -396,7 +410,12 @@ app.get('/api/doctor/visits/:id', async (req, res) => {
       source: a.source,
     }));
 
-    res.json({ visit: visit[0], answers: pretty, summary: summ[0] || null });
+    // Doctor reads the ENGLISH structured summary when available
+    const summary = summ[0]
+      ? { ...summ[0], structured: summ[0].structured_en || summ[0].structured }
+      : null;
+
+    res.json({ visit: visit[0], answers: pretty, summary });
   } catch (err) {
     sendError(res, err);
   }
@@ -461,7 +480,13 @@ if (existsSync(DIST)) {
 
 // Make sure the DB is ready (schema + seed) before accepting traffic.
 initDb()
-  .then(() => app.listen(PORT, () => console.log(`MediKiosk API on http://localhost:${PORT}`)))
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`MediKiosk API on http://localhost:${PORT}`);
+      // Pre-load the Whisper model in the background so voice is instant.
+      try { warmWhisper(); } catch (_) {}
+    });
+  })
   .catch((err) => {
     console.error('Database init failed:', err);
     process.exit(1);

@@ -18,7 +18,9 @@ MODEL_NAME = os.environ.get('WHISPER_MODEL', 'small')
 
 def main():
     from faster_whisper import WhisperModel
-    model = WhisperModel(MODEL_NAME, device='cpu', compute_type='int8')
+    # cpu_threads=4 measured fastest on the kiosk box (8 threads thrashes under
+    # memory pressure; 2 threads starve the encoder).
+    model = WhisperModel(MODEL_NAME, device='cpu', compute_type='int8', cpu_threads=4)
 
     for line in sys.stdin:
         line = line.strip()
@@ -35,7 +37,7 @@ def main():
                 audio,
                 language=lang,
                 vad_filter=True,
-                beam_size=3,
+                beam_size=1,  # greedy — much faster, fine for a kiosk
             )
             text = ' '.join(seg.text.strip() for seg in segments).strip()
             print(json.dumps({'text': text}), flush=True)

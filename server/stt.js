@@ -28,7 +28,8 @@ const WHISPER_SCRIPT = path.join(__dirname, 'whisper_server.py');
 function getSttUrl(langCode) {
   const key = process.env.GOOGLE_STT_KEY;
   if (!key) return '';
-  const lang = LANG_MAP[langCode] || 'hi-IN';
+  // lang=auto: Google can't auto-detect — default to English (most common fallback)
+  const lang = langCode === 'auto' ? 'en-IN' : (LANG_MAP[langCode] || 'hi-IN');
   return `https://www.google.com/speech-api/v2/recognize?client=chromium&key=${key}&lang=${lang}`;
 }
 
@@ -89,8 +90,8 @@ function whisperTranscribe(wavPath, langCode) {
   return new Promise((resolve, reject) => {
     const p = ensureWhisper();
     whisperPending.push({ resolve, reject });
-    // faster-whisper wants 2-letter codes: hi-IN → hi
-    const code = (LANG_MAP[langCode] || 'hi-IN').slice(0, 2);
+    // lang=auto → null → Whisper auto-detects the spoken language
+    const code = (langCode === 'auto' || !langCode) ? null : (LANG_MAP[langCode] || 'hi-IN').slice(0, 2);
     p.stdin.write(JSON.stringify({ audio: wavPath, lang: code }) + '\n');
     setTimeout(() => reject(new Error('whisper: timeout')), 120000).unref();
   });
@@ -102,6 +103,17 @@ function pickProvider() {
   if (want === 'google') return 'google';
   // auto: local whisper wins when it's installed (offline-capable)
   return existsSync(WHISPER_PY) ? 'whisper' : 'google';
+}
+
+// Spawn the worker at boot so the model is already in memory by the time the
+// first patient speaks — kills the 5-7s cold-start delay on the very first clip.
+export function warmWhisper() {
+  if (pickProvider() !== 'whisper') return;
+  try {
+    ensureWhisper(); // loading the model happens in the worker's main()
+  } catch (err) {
+    console.error('whisper warm-up failed:', err.message);
+  }
 }
 
 // Transcribe a buffer of recorded audio. Returns the recognized text or ''.

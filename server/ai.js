@@ -139,3 +139,24 @@ export async function generateAISummary(visitId) {
 // tiny pool helper so ai.js can import pool without circular deps
 import pool from './db.js';
 const pool_query = (sql, params) => pool.query(sql, params);
+
+// Translate a structured summary's string values to English (doctor-facing).
+// The patient answered in their own language; the doctor reads English.
+// One batched LLM call — cheap, and only runs when the visit isn't English.
+export async function translateStructured(structured, sourceLang) {
+  if (!structured || sourceLang === 'en') return structured;
+  try {
+    const prompt =
+      `Translate the following patient intake data from ${sourceLang} to English for a doctor. ` +
+      `Keep the exact same JSON structure. Only translate string values; keep numbers, nulls and booleans as-is. ` +
+      `Use plain clinical English. Return ONLY the JSON, no commentary.\n\n` +
+      JSON.stringify(structured);
+    const raw = await callAI(prompt);
+    const parsed = JSON.parse(raw.replace(/^```json\s*|```$/g, '').trim());
+    // safety: never return something malformed — keep original on any doubt
+    return typeof parsed === 'object' && parsed !== null ? parsed : structured;
+  } catch (err) {
+    console.error('translateStructured failed, keeping original:', err.message);
+    return structured;
+  }
+}

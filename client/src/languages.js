@@ -28,11 +28,18 @@ export const LANGUAGES = [
 
 export const languageByCode = (code) => LANGUAGES.find((l) => l.code === code) || LANGUAGES[0]
 
-// ---- speech recognition (browser Web Speech API, with server fallback for Firefox) ----
+// ---- speech recognition ----
+// ALWAYS prefer the server path (MediaRecorder → /api/stt → Whisper):
+//  - mobile Chrome/Android SpeechRecognition is unreliable (drops words,
+//    dies after one utterance, can't be restarted cleanly)
+//  - Whisper auto-detects the SPOKEN language (lang=auto), so what the user
+//    says wins over what UI language they picked
+// Browser Web Speech API is only a last resort when getUserMedia is missing.
 export function recognizeSpeech(langCode, onPartial) {
+  if (navigator.mediaDevices?.getUserMedia) return recognizeServer(langCode, onPartial)
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition
   if (SR) return recognizeBrowser(langCode, onPartial)
-  return recognizeServer(langCode, onPartial)
+  return Promise.reject(new Error('No microphone support on this device'))
 }
 
 // Native path: Chrome/Edge/Safari
@@ -123,9 +130,10 @@ function recognizeServer(langCode, onPartial) {
           stream.getTracks().forEach((t) => t.stop())
           if (chunks.length === 0) { resolve(''); return }
           const blob = new Blob(chunks, { type: mime })
-          onPartial?.('…') // recording done, transcribing
           try {
-            const r = await fetch(`/api/stt?lang=${encodeURIComponent(langCode)}`, {
+            // lang=auto → the STT engine detects the SPOKEN language itself.
+            // The patient's words win over the UI language they picked.
+            const r = await fetch('/api/stt?lang=auto', {
               method: 'POST',
               headers: { 'Content-Type': mime },
               body: blob,
@@ -138,7 +146,6 @@ function recognizeServer(langCode, onPartial) {
           }
         }
         rec.onstart = () => {
-          onPartial?.('')
           checkSilence()
         }
         rec.start()
