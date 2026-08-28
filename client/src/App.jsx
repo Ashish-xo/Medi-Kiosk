@@ -38,10 +38,17 @@ const ui = (lang, key) => {
   return s || key
 }
 
+// gender options for the start form (values match the server's gender field)
+const GENDERS = [
+  { value: 'male', labelKey: 'male' },
+  { value: 'female', labelKey: 'female' },
+  { value: 'other', labelKey: 'other' },
+]
+
 export default function App() {
   const [lang, setLang] = useState('en')
   const [langOpen, setLangOpen] = useState(false)
-  const [patient, setPatient] = useState({ name: '', phone: '', age: '' })
+  const [patient, setPatient] = useState({ name: '', phone: '', age: '', gender: '' })
   const [visitId, setVisitId] = useState(null)
   const [question, setQuestion] = useState(null)
   const [progress, setProgress] = useState({ answered: 0, total: 0 })
@@ -135,6 +142,7 @@ export default function App() {
       // send cleaned + validated fields (age optional, empty string → skip)
       const payload = { name, phone: `+91${phone}`, language: lang }
       if (ageNum) payload.age = ageNum
+      if (patient.gender) payload.gender = patient.gender
       const r = await fetch(`${API}/visits`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -340,6 +348,18 @@ export default function App() {
           <input placeholder={ui(lang, 'age')} type="text" inputMode="numeric" maxLength={3}
             value={patient.age}
             onChange={e => setPatient({...patient, age: cleanAge(e.target.value)})} />
+          <div className="gender-row" role="group" aria-label={ui(lang, 'gender')}>
+            <span className="gender-label">{ui(lang, 'gender')}</span>
+            <div className="gender-options">
+              {GENDERS.map(g => (
+                <button key={g.value} type="button"
+                  className={'gender-btn' + (patient.gender === g.value ? ' active' : '')}
+                  onClick={() => setPatient({...patient, gender: g.value})}>
+                  {ui(lang, g.labelKey)}
+                </button>
+              ))}
+            </div>
+          </div>
           <button className="primary big" disabled={busy}>
             {ui(lang, 'start')}
           </button>
