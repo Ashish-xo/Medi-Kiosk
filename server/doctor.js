@@ -76,12 +76,14 @@ function renderQueue() {
     const flags = (v.red_flags || []).length;
     const statusClass = v.status === 'waiting' ? 'waiting' : v.status === 'in_progress' ? 'inprogress' : v.status === 'consulted' ? 'consulted' : 'plain';
     const statusLabel = v.status === 'waiting' ? 'WAITING' : v.status === 'in_progress' ? 'INTAKE' : v.status === 'consulted' ? 'DONE' : esc(v.status).toUpperCase();
-    return `<div class="visit ${v.id === current ? 'active' : ''}" data-id="${v.id}">
+    const priority = v.one_liner && v.one_liner.includes('HIGH') ? 'urgent' : v.one_liner && v.one_liner.includes('MEDIUM') ? 'medium' : '';
+    return `<div class="visit ${v.id === current ? 'active' : ''} ${priority}" data-id="${v.id}">
       <div class="row1">
         <span class="name">${esc(v.name)}</span>
         <span class="time">${timeAgo(v.created_at)}</span>
       </div>
-      <div class="meta">${esc(v.age || '—')} yrs · ${esc(v.gender || '—')} · ${esc(v.phone || '—')}</div>
+      <div class="clinical-line">${esc(v.one_liner || '…')}</div>
+      <div class="sub-meta">${esc(v.phone)}</div>
       <div class="flags">
         ${flags ? '<span class="flag urgent">🚨 URGENT</span>' : ''}
         ${(v.red_flags||[]).map(f => `<span class="flag plain">${esc(f)}</span>`).join('')}

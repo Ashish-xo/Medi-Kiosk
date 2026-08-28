@@ -72,6 +72,7 @@ export async function initDb() {
   const cols = [
     ["visits", "patient_note", "TEXT DEFAULT ''"],
     ["visits", "has_urgency", "BOOLEAN DEFAULT false"],
+    ["visits", "one_liner", "TEXT DEFAULT ''"],
     ["visits", "token", "TEXT"],
     ["questions", "translations", "JSONB DEFAULT '{}'"],
     ["summaries", "ai_summary", "TEXT DEFAULT ''"],

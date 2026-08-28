@@ -132,3 +132,31 @@ export async function buildSummary(visitId) {
 export async function summaryLine(structured) {
   return `${structured.chief_complaint} · ${structured.duration} · ${structured.severity}`;
 }
+
+// Deterministic fallback clinical one-liner (used while the AI snapshot loads).
+// Same spirit as the AI line, but rule-based so the queue is never blank.
+const DUR = {
+  today: 'since today', '1-3 days ago': '3 days', '4-7 days ago': 'a week',
+  '1-4 weeks ago': 'weeks', 'more than a week': 'a week+', 'more than a month': 'a month+',
+};
+
+export function quickLine(patient, answers, redFlags) {
+  const ans = {};
+  for (const a of answers) ans[a.question_id] = a.value;
+  const age = patient.age || '?';
+  const gender = patient.gender ? String(patient.gender)[0].toUpperCase() : '?';
+  const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+  const cc = cap(prettyValue('cc', ans.cc)) || '—';
+  const dur = DUR[ans.cp_start] || DUR[ans.cc_start] || '';
+  const sev = ans.cp_severity ? prettyValue('cp_severity', ans.cp_severity)
+    : (ans.cc_severity ? prettyValue('cc_severity', ans.cc_severity) : '');
+  const flags = Array.isArray(redFlags) ? redFlags.length : 0;
+  const priority = flags > 0 || sev === 'Severe' ? 'HIGH'
+    : sev === 'Moderate' ? 'MEDIUM' : 'LOW';
+
+  const parts = [`${age}${gender}`, `${cc}${dur ? ' ' + dur : ''}`];
+  if (ans.cp_character) parts.push(prettyValue('cp_character', ans.cp_character));
+  if (ans.cp_breath) parts.push(ans.cp_breath === 'yes' ? 'Breathless' : 'No breathlessness');
+  parts.push(`${priority} priority`);
+  return parts.join(' • ');
+}

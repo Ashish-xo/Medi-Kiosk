@@ -23,6 +23,11 @@ main { padding: 24px 28px; max-width: 1100px; margin: 0 auto; }
 .visit .name { font-weight: 700; font-size: 1.05rem; }
 .visit .time { margin-left: auto; color: var(--muted); font-size: .78rem; }
 .visit .meta { color: var(--muted); font-size: .85rem; margin-top: 4px; }
+.visit .clinical-line { color: var(--text); font-size: .9rem; margin-top: 6px; line-height: 1.4; font-weight: 500; }
+.visit .sub-meta { color: var(--muted); font-size: .75rem; margin-top: 2px; }
+.visit.urgent { border-color: var(--danger); }
+.visit.urgent .clinical-line { color: var(--danger); }
+.visit.medium { border-color: var(--warn); }
 .visit .flags { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
 
 .flag { font-size: .72rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; }

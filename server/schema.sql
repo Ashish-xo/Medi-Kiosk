@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS visits (
   ayush_mode BOOLEAN DEFAULT true,
   patient_note TEXT DEFAULT '',
   has_urgency BOOLEAN DEFAULT false,
+  one_liner TEXT DEFAULT '',               -- AI-generated clinical snapshot for the queue
   token TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );

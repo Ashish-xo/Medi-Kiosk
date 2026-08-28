@@ -4,8 +4,8 @@ import path from 'node:path';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import pool from './db.js';
-import { buildSummary, prettyValue } from './summary.js';
-import { generateAISummary, translateStructured } from './ai.js';
+import { buildSummary, prettyValue, quickLine } from './summary.js';
+import { generateAISummary, generateOneLiner, translateStructured } from './ai.js';
 import { visitPDF } from './pdf.js';
 import { transcribeAudio, warmWhisper } from './stt.js';
 import { randomBytes } from 'node:crypto';
@@ -133,6 +133,8 @@ async function finalizeVisit(visitId) {
   // Killer feature: 60s intake -> 10s doctor-ready summary.
   // Fire the AI summary generation in the background so the kiosk isn't blocked.
   generateAISummary(visitId).catch((err) => console.error('AI summary failed:', err.message));
+  // One-line clinical snapshot for the doctor queue.
+  generateOneLiner(visitId).catch((err) => console.error('one-liner failed:', err.message));
 
   return structured;
 }
@@ -365,13 +367,30 @@ app.get('/api/doctor/auth', (_req, res) => res.json({ ok: true }));
 app.get('/api/doctor/visits', async (_req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT v.id, v.status, v.red_flags, v.has_urgency, v.patient_note, v.created_at,
+      `SELECT v.id, v.status, v.red_flags, v.has_urgency, v.patient_note, v.one_liner, v.created_at,
               p.name, p.age, p.gender, p.phone,
               (SELECT count(*)::int FROM answers a WHERE a.visit_id = v.id) AS answered,
               (SELECT count(*)::int FROM questions) AS total
          FROM visits v JOIN patients p ON p.id = v.patient_id
         ORDER BY CASE v.status WHEN 'waiting' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END, v.created_at ASC`
     );
+    // Fallback clinical one-liner for visits the AI hasn't finished yet
+    const missing = rows.filter(v => !v.one_liner);
+    if (missing.length > 0) {
+      const { rows: answers } = await pool.query(
+        `SELECT a.visit_id, a.question_id, a.value FROM answers a WHERE a.visit_id = ANY($1) ORDER BY a.id`,
+        [missing.map(v => v.id)]
+      );
+      const byVisit = {};
+      for (const a of answers) (byVisit[a.visit_id] = byVisit[a.visit_id] || []).push(a);
+      for (const v of missing) {
+        v.one_liner = quickLine(
+          { age: v.age, gender: v.gender },
+          byVisit[v.id] || [],
+          v.red_flags
+        );
+      }
+    }
     res.json({ visits: rows });
   } catch (err) {
     sendError(res, err);

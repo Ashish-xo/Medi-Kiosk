@@ -136,6 +136,42 @@ export async function generateAISummary(visitId) {
   return summary;
 }
 
+// Generate the ONE-LINE clinical snapshot shown in the doctor's queue.
+// The doctor shouldn't have to read a form — they get a handoff note like:
+//   "23M • Fever 3 days • Dry cough • No chest pain • Medium priority"
+// Runs in the background at intake, stores on visits.one_liner.
+export async function generateOneLiner(visitId) {
+  try {
+    const { rows: visit } = await pool_query(
+      `SELECT v.red_flags, p.age, p.gender FROM visits v JOIN patients p ON p.id = v.patient_id WHERE v.id = $1`, [visitId]);
+    const { rows: answers } = await pool_query(
+      `SELECT a.question_id, a.value, q.text_en FROM answers a JOIN questions q ON q.id = a.question_id WHERE a.visit_id = $1 ORDER BY a.id`, [visitId]);
+    const v = visit[0];
+    if (!v) return '';
+    const flags = (v.red_flags || []).join('; ') || 'None';
+    const lines = answers.map(a => `- [${a.question_id}] ${a.text_en}: ${a.value}`).join('\n');
+    const prompt =
+      `You write ONE-LINE clinical snapshots for a doctor's queue. ` +
+      `Patient: ${v.age || '?'}y ${v.gender || '?'}. Rule-based red flags: ${flags}.\n\nAnswers:\n${lines}\n\n` +
+      `Write exactly ONE line, this format:\n` +
+      `{age}{M/F} • {Chief complaint} {short duration} • {1-2 key symptoms, can include negatives like "No chest pain"} • {priority}\n` +
+      `Rules: capitalize the first word. Use short durations: "today"→"today", "1-3 days ago"→"3 days", ` +
+      `"4-7 days ago"→"a week", "1-4 weeks ago"→"weeks", "more than a month"→"a month+". ` +
+      `Priority: HIGH if red flags or severe, MEDIUM if moderate, else LOW. Only use information given. ` +
+      `Under 16 words, plain text, no markdown, no quotes.\n` +
+      `Example: "23M • Fever 3 days • Dry cough • No chest pain • Medium priority"`;
+    const text = await callAI(prompt);
+    const line = text.replace(/\s+/g, ' ').trim().slice(0, 160);
+    if (line) {
+      await pool_query(`UPDATE visits SET one_liner = $2 WHERE id = $1`, [visitId, line]);
+    }
+    return line;
+  } catch (err) {
+    console.error('generateOneLiner failed:', err.message);
+    return '';
+  }
+}
+
 // tiny pool helper so ai.js can import pool without circular deps
 import pool from './db.js';
 const pool_query = (sql, params) => pool.query(sql, params);
