@@ -1,5 +1,8 @@
+# RoadSence-compatible Nixpacks config for MediKiosk
+# ffmpeg is REQUIRED: the server converts mic audio (webm) → wav before STT.
+# aptPkgs is reliable on Railway's Debian build image (nixPkgs silently no-ops there).
 [phases.setup]
-nixPkgs = ["ffmpeg"]
+aptPkgs = ["ffmpeg"]
 
 [phases.install]
 cmds = ["npm install"]
