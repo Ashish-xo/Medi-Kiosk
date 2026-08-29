@@ -17,6 +17,7 @@
     <div>
       <div class="panel">
         <h2>Patient Queue</h2>
+        <input type="search" id="searchInput" class="search-box" placeholder="🔍 Search by name or phone…" autocomplete="off">
         <div id="queue"><div class="empty">Loading…</div></div>
       </div>
     </div>
@@ -59,6 +60,9 @@
   </div>
 </main>
 <div class="saved-toast" id="toast">Saved ✅</div>
+
+<!-- New patient notification banner -->
+<div class="notify-banner hidden" id="notifyBanner">🔔 <span id="notifyText"></span></div>
 
 <!-- PIN gate -->
 <div class="pin-overlay hidden" id="pinOverlay">

@@ -167,6 +167,37 @@ export function stopListeningEarly() {
   if (_activeServerRec) { _activeServerRec(); _activeServerRec = null }
 }
 
+// Normalize text for fuzzy matching: lowercase, strip punctuation/diacritics-ish
+function norm(s) {
+  return String(s || '').toLowerCase().replace(/[^\p{L}\p{M}\s]/gu, '').replace(/\s+/g, ' ').trim()
+}
+
+// Best fuzzy match of a spoken transcript against option labels.
+// Returns { value, label, score } or null if nothing is close enough.
+export function matchOption(transcript, options) {
+  if (!transcript || !options?.length) return null
+  const t = norm(transcript)
+  if (!t) return null
+  let best = null, bestScore = 0
+  for (const opt of options) {
+    const labels = [opt.label_en, opt.label_hi, opt.value, opt.label_hi || opt.label_en]
+      .filter(Boolean).map(norm)
+    for (const label of labels) {
+      let score = 0
+      if (label === t) score = 1
+      else if (label.includes(t) || t.includes(label)) score = 0.8   // substring either way
+      else {
+        // token overlap: how many of the spoken words appear in this option
+        const tw = t.split(' '), lw = label.split(' ')
+        const hit = tw.filter(w => w.length > 2 && lw.some(x => x === w || x.includes(w) || w.includes(x)))
+        score = tw.length ? (hit.length / tw.length) * 0.6 : 0
+      }
+      if (score > bestScore) { bestScore = score; best = { value: opt.value, label: opt.label_en, score } }
+    }
+  }
+  return bestScore >= 0.6 ? best : null
+}
+
 // ---- text to speech ----
 // Plays through our server's /api/tts proxy (Google TTS). Why a proxy?
 //  - Linux/Firefox often has NO working speechSynthesis voices at all, so the

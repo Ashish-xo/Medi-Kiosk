@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MediKiosk — Queue</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; background: #0e1a2b; color: #e2e8f0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; }
+  .screen { max-width: 700px; width: 100%; text-align: center; }
+  h1 { font-size: 3rem; margin-bottom: 8px; color: #38bdf8; }
+  .sub { color: #94a3b8; font-size: 1.3rem; margin-bottom: 40px; }
+  .now-serving { background: #152742; border: 2px solid #38bdf8; border-radius: 20px; padding: 30px; margin-bottom: 30px; }
+  .now-serving .label { color: #94a3b8; font-size: 1.1rem; text-transform: uppercase; letter-spacing: .08em; }
+  .now-serving .num { font-size: 5rem; font-weight: 800; color: #38bdf8; line-height: 1.1; }
+  .now-serving .name { font-size: 1.4rem; color: #e2e8f0; margin-top: 6px; }
+  .now-serving .urgent { color: #f87171; font-weight: 700; margin-top: 8px; }
+  .waiting-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+  .waiting-card { background: #152742; border: 1px solid #1e3a5f; border-radius: 14px; padding: 14px; text-align: left; }
+  .waiting-card .pos { font-size: 1.5rem; font-weight: 700; color: #38bdf8; }
+  .waiting-card .name { font-size: 1.1rem; margin: 4px 0; }
+  .waiting-card .meta { color: #94a3b8; font-size: .85rem; }
+  .waiting-card.urgent { border-color: #f87171; }
+  .waiting-card.urgent .pos { color: #f87171; }
+  .empty { color: #94a3b8; padding: 60px 0; font-size: 1.5rem; }
+  .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+  .status-dot.consulting { background: #34d399; }
+  .status-dot.waiting { background: #fbbf24; }
+  .footer { margin-top: 40px; color: #475569; font-size: .85rem; }
+  .refresh-badge { position: fixed; bottom: 16px; right: 16px; color: #475569; font-size: .8rem; }
+</style>
+</head>
+<body>
+<div class="screen">
+  <h1>🩺 MediKiosk</h1>
+  <p class="sub">Queue &amp; Waiting Area</p>
+  <div id="nowServing"><div class="now-serving"><div class="label">Now Serving</div><div class="num">—</div></div></div>
+  <div id="waitingList"><div class="empty">No patients waiting.</div></div>
+  <div class="footer">Patients are seen in order. Urgent cases (🚨) may be seen first.</div>
+</div>
+<div class="refresh-badge" id="badge">live</div>
+<script>
+const API = '';
+const $ = s => document.querySelector(s);
+
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function refresh() {
+  try {
+    const r = await fetch(API + '/api/doctor/visits');
+    const d = await r.json();
+    const visits = d.visits || [];
+    const waiting = visits.filter(v => v.status === 'waiting' || v.status === 'in_progress');
+    const consult = visits.filter(v => v.status === 'consulted' || v.status === 'waiting')[0]; // best guess
+
+    if (waiting.length === 0) {
+      $('#nowServing').innerHTML = '<div class="now-serving"><div class="label">Now Serving</div><div class="num">—</div><div class="name" style="color:#94a3b8">No patients in queue</div></div>';
+      $('#waitingList').innerHTML = '<div class="empty">Clinic is empty.</div>';
+      return;
+    }
+
+    const nowServing = waiting[0];
+    $('#nowServing').innerHTML = `<div class="now-serving">
+      <div class="label">Now Serving</div>
+      <div class="num">${nowServing.has_urgency ? '🚨' : ''} ${esc(nowServing.name)}</div>
+      <div class="name">${esc(nowServing.age || '')} yrs · ${esc(nowServing.gender || '')}</div>
+      ${nowServing.has_urgency ? '<div class="urgent">⚠ Urgent — please attend immediately</div>' : ''}
+    </div>`;
+
+    const remaining = waiting.slice(1);
+    $('#waitingList').innerHTML = remaining.length
+      ? remaining.map((v, i) => `<div class="waiting-card ${v.has_urgency ? 'urgent' : ''}">
+          <div class="pos">${v.has_urgency ? '🚨' : ''} #${i + 2}</div>
+          <div class="name">${esc(v.name)}</div>
+          <div class="meta">${esc(v.age || '')} yrs · ${v.red_flags?.length ? '⚠ ' + esc(v.red_flags[0]) : ''}</div>
+        </div>`).join('')
+      : '<div class="empty">No other patients waiting.</div>';
+  } catch (e) { $('#badge').textContent = 'offline'; }
+}
+
+setInterval(refresh, 5000);
+refresh();
+</script>
+</body>
+</html>

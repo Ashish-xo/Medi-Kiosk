@@ -4,7 +4,7 @@ import {
   loadQuestions, cachedQuestions, nextQuestionId, questionById,
   savePendingVisit, getPendingVisit, syncPendingVisit,
 } from './offline.js'
-import { LANGUAGES, languageByCode, recognizeSpeech, speakText, stopListeningEarly } from './languages.js'
+import { LANGUAGES, languageByCode, recognizeSpeech, speakText, stopListeningEarly, matchOption } from './languages.js'
 import { UI_STRINGS } from './ui_strings.js'
 
 const API = '/api' // proxied to localhost:4000 by Vite
@@ -48,7 +48,7 @@ const GENDERS = [
 export default function App() {
   const [lang, setLang] = useState('en')
   const [langOpen, setLangOpen] = useState(false)
-  const [patient, setPatient] = useState({ name: '', phone: '', age: '', gender: '' })
+  const [patient, setPatient] = useState({ name: '', phone: '', age: '', gender: '', abha: '' })
   const [visitId, setVisitId] = useState(null)
   const [question, setQuestion] = useState(null)
   const [progress, setProgress] = useState({ answered: 0, total: 0 })
@@ -72,6 +72,8 @@ export default function App() {
   const [transcribing, setTranscribing] = useState(false)
   const [otherPanel, setOtherPanel] = useState(false)
   const [otherText, setOtherText] = useState('')
+  const [queuePos, setQueuePos] = useState(null)
+  const [returning, setReturning] = useState(null)
 
   // -------- offline awareness --------
   useEffect(() => {
@@ -105,6 +107,26 @@ export default function App() {
   const cleanName = (v) => v.replace(/[^\p{L}\p{M}\s]/gu, '')
   const cleanPhone = (v) => v.replace(/\D/g, '').slice(0, 10)
   const cleanAge = (v) => v.replace(/\D/g, '').slice(0, 3)
+  const cleanAbha = (v) => v.replace(/[^0-9-]/g, '').slice(0, 20)
+
+  // Auto-prefill for returning patients when a complete phone is entered
+  const lookupPatient = async (phone) => {
+    if (phone.length !== 10) return
+    try {
+      const r = await fetch(`${API}/patients/lookup?phone=${phone}`)
+      const data = await r.json()
+      if (r.ok && data.found) {
+        setPatient(prev => ({
+          ...prev,
+          name: data.patient.name || prev.name,
+          age: data.patient.age ? String(data.patient.age) : prev.age,
+          gender: data.patient.gender || prev.gender,
+          abha: data.patient.abha_id || prev.abha,
+        }))
+        setReturning(data.patient)
+      }
+    } catch (_) {}
+  }
 
   // Rule-based red flags, mirrored client-side for offline kiosks.
   const computeLocalFlags = (answers) => {
@@ -143,6 +165,7 @@ export default function App() {
       const payload = { name, phone: `+91${phone}`, language: lang }
       if (ageNum) payload.age = ageNum
       if (patient.gender) payload.gender = patient.gender
+      if (patient.abha) payload.abha_id = patient.abha
       const r = await fetch(`${API}/visits`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -152,7 +175,24 @@ export default function App() {
       if (!r.ok) throw new Error(data.error)
       setVisitId(data.visitId)
       setVisitToken(data.token || null)
+      setReturning(data.returning || null)
       setQuestion(data.currentQuestion)
+      // Returning patient — prefill the form on the next visit (or this one if resumed)
+      if (data.returning) {
+        setPatient(prev => ({
+          ...prev,
+          name: data.returning.name || prev.name,
+          age: data.returning.age ? String(data.returning.age) : prev.age,
+          gender: data.returning.gender || prev.gender,
+          abha: data.returning.abha_id || prev.abha,
+        }))
+      }
+      // If resumed (duplicate guard), skip to correct screen
+      if (data.resumed && data.done) {
+        setDone(true)
+        fetchQueuePosition(data.visitId)
+        return
+      }
       setTimeout(() => speak(qText(data.currentQuestion, lang)), 300)
     } catch (err) {
       if (questions.length) {
@@ -196,7 +236,7 @@ export default function App() {
       if (!r.ok) throw new Error(data.error)
       setRedFlags(data.red_flags || [])
       setProgress(data.progress || {})
-      if (data.done) { setDone(true); setSummary(data.summary); fetchQR(); return }
+      if (data.done) { setDone(true); setSummary(data.summary); fetchQR(); fetchQueuePosition(); return }
       setQuestion(data.nextQuestion)
       setText('')
       setTimeout(() => speak(qText(data.nextQuestion, lang)), 300)
@@ -275,6 +315,15 @@ export default function App() {
     } catch (_) {}
   }
 
+  // Queue position — how many people are ahead of this patient
+  const fetchQueuePosition = async (vid) => {
+    try {
+      const r = await fetch(`${API}/visits/${vid || visitId}/position`)
+      const data = await r.json()
+      if (r.ok && data.position !== null) setQueuePos(data.position)
+    } catch (_) {}
+  }
+
   // Voice input → text. First tap STARTS recording, second tap STOPS it.
   // Toggle gives instant feedback: recording (pulsing) → transcribing (spinner)
   // → done. Taps during "transcribing" are ignored so nothing can double-fire.
@@ -302,6 +351,29 @@ export default function App() {
 
   // Mic button label follows the recording state machine
   const micHint = transcribing ? ui(lang, 'transcribing') : listening ? ui(lang, 'tapToStop') : ui(lang, 'tapToSpeak')
+
+  // Voice answer for CHOICE questions: transcribe, fuzzy-match to an option, answer it.
+  const [choiceVoice, setChoiceVoice] = useState(null)
+  const [choiceError, setChoiceError] = useState('')
+  const answerByVoice = async () => {
+    if (transcribing || listening) return
+    setChoiceError(''); setChoiceVoice('listening'); setListening(true)
+    try {
+      const transcript = await recognizeSpeech(lang, () => {})
+      setChoiceVoice('matching')
+      if (!transcript) { setChoiceError(ui(lang, 'didntHear')); setChoiceVoice(null); return }
+      const match = matchOption(transcript, question.options)
+      if (match) {
+        setChoiceVoice(null)
+        answer(match.value)
+      } else {
+        setChoiceError(ui(lang, 'noMatch') + ' "' + transcript + '"')
+        setChoiceVoice(null)
+      }
+    } catch (err) {
+      setChoiceError(err.message); setChoiceVoice(null)
+    } finally { setListening(false) }
+  }
 
   // Append transcript to existing text instead of replacing it — typed words survive
   const appendTo = (setter) => (t) => setter(prev => (prev ? prev + ' ' : '') + t)
@@ -343,8 +415,13 @@ export default function App() {
             <span className="phone-prefix">IN +91</span>
             <input placeholder={ui(lang, 'phone')} type="tel" inputMode="numeric"
               value={patient.phone} maxLength={10}
-              onChange={e => setPatient({...patient, phone: cleanPhone(e.target.value)})} required />
+              onChange={e => {
+                const p = cleanPhone(e.target.value)
+                setPatient({...patient, phone: p})
+                if (p.length === 10) lookupPatient(p)
+              }} required />
           </div>
+          {returning && <p className="welcome-back">👋 {ui(lang, 'welcomeBack')} {returning.name}!</p>}
           <input placeholder={ui(lang, 'age')} type="text" inputMode="numeric" maxLength={3}
             value={patient.age}
             onChange={e => setPatient({...patient, age: cleanAge(e.target.value)})} />
@@ -360,6 +437,9 @@ export default function App() {
               ))}
             </div>
           </div>
+          <input placeholder={ui(lang, 'abha')} type="text" inputMode="numeric"
+            value={patient.abha}
+            onChange={e => setPatient({...patient, abha: cleanAbha(e.target.value)})} />
           <button className="primary big" disabled={busy}>
             {ui(lang, 'start')}
           </button>
@@ -383,6 +463,14 @@ export default function App() {
         {redFlags.length > 0 && (
           <div className="red-banner">
             ⚠️ {ui(lang, 'urgentStaff')}
+          </div>
+        )}
+
+        {queuePos && !offline && (
+          <div className="queue-pos">
+            <div className="qnum">{ui(lang, 'yourPosition')}</div>
+            <div className="qbig">#{queuePos}</div>
+            <div className="qsub">{ui(lang, 'aheadCount').replace('{n}', String(queuePos - 1))}</div>
           </div>
         )}
 
@@ -513,6 +601,12 @@ export default function App() {
                 {optText(question, opt, lang)}
               </button>
             ))}
+            <button className={'mic choice-mic' + (choiceVoice ? ' listening' : '')}
+              onClick={answerByVoice} title={ui(lang, 'sayAnswer')} aria-label={ui(lang, 'sayAnswer')}>
+              <MicIcon listening={!!choiceVoice} />
+              <span className="mic-hint">{choiceVoice === 'listening' ? ui(lang, 'listening') : choiceVoice === 'matching' ? ui(lang, 'matching') : ui(lang, 'sayAnswer')}</span>
+            </button>
+            {choiceError && <p className="error choice-error">{choiceError}</p>}
           </div>
         ) : (
           <div className="text-input">

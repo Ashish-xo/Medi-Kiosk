@@ -331,9 +331,41 @@ body {
 }
 .note-actions .secondary:disabled { opacity: .5; cursor: not-allowed; }
 
+/* queue position on done screen */
+.queue-pos {
+  background: linear-gradient(135deg, var(--panel), var(--panel2, #1b2f4f));
+  border: 1px solid var(--accent);
+  border-radius: 16px;
+  padding: 16px 28px;
+  width: 100%;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.queue-pos .qnum { color: var(--muted); font-size: .9rem; }
+.queue-pos .qbig { font-size: 3rem; font-weight: 800; color: var(--accent); line-height: 1.1; }
+.queue-pos .qsub { color: var(--muted); font-size: .85rem; }
+
+/* welcome back banner */
+.welcome-back { color: var(--ok, #34d399); font-weight: 600; font-size: .95rem; }
+
 /* "other" writing panel on first question */
 .other-panel { text-align: center; }
 .other-panel .sub2 { margin-bottom: 6px; }
+
+/* choice mic button */
+.choice-mic {
+  grid-column: 1 / -1;
+  justify-self: center;
+  margin-top: 8px;
+}
+.choice-error {
+  grid-column: 1 / -1;
+  font-size: .9rem;
+  padding: 4px 0;
+}
 
 /* ── mobile optimizations ── */
 @media (max-width: 480px) {

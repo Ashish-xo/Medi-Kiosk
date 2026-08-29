@@ -76,7 +76,9 @@ async function callAI(userContent) {
 }
 
 // Build the doctor-ready AI summary for a visit. Saves it to the DB.
-export async function generateAISummary(visitId) {
+// If lang is provided, the AI writes the summary in that language (for the patient's
+// own understanding; the doctor console always shows the English version).
+export async function generateAISummary(visitId, lang) {
   // Pull everything the doctor needs to review: patient, structured summary, raw answers, note, flags
   const { rows: visit } = await pool_query(
     `SELECT v.*, p.name, p.age, p.gender, p.phone
@@ -126,6 +128,10 @@ export async function generateAISummary(visitId) {
   }
   lines.push('');
   lines.push(`RULE-BASED RED FLAGS (already computed): ${redFlags.length ? redFlags.join('; ') : 'None'}`);
+  if (lang && lang !== 'en') {
+    lines.push('');
+    lines.push(`OUTPUT LANGUAGE: Write the summary in ${lang.toUpperCase()} (the patient's language), keeping the structure and section labels in English, but all values/content in ${lang.toUpperCase()}.`);
+  }
 
   const summary = await callAI(lines.join('\n'));
   await pool_query(

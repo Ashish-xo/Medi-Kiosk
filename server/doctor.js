@@ -3,6 +3,7 @@
 const API = '';
 let visits = [];
 let current = null;
+let prevCount = 0;
 
 const $ = (s) => document.querySelector(s);
 
@@ -62,6 +63,11 @@ async function refresh() {
     const r = await fetchA(API + '/api/doctor/visits');
     if (r.status === 401) return handleUnauthorized();
     const d = await r.json();
+    const newWaiting = d.visits.filter(v => v.status === 'waiting').length;
+    if (newWaiting > prevCount && prevCount !== 0) {
+      notifyNewPatient(d.visits.filter(v => v.status === 'waiting')[0]);
+    }
+    prevCount = newWaiting;
     visits = d.visits;
     $('#liveBadge').textContent = visits.filter(v => v.status !== 'consulted').length + ' in queue';
     renderQueue();
@@ -71,8 +77,11 @@ async function refresh() {
 
 function renderQueue() {
   const q = $('#queue');
-  if (!visits.length) { q.innerHTML = '<div class="empty">No patients yet.</div>'; return; }
-  q.innerHTML = visits.map(v => {
+  const filtered = searchTerm
+    ? visits.filter(v => (v.name || '').toLowerCase().includes(searchTerm) || (v.phone || '').includes(searchTerm))
+    : visits;
+  if (!filtered.length) { q.innerHTML = searchTerm ? '<div class="empty">No matches for "' + esc(searchTerm) + '"</div>' : '<div class="empty">No patients yet.</div>'; return; }
+  q.innerHTML = filtered.map(v => {
     const flags = (v.red_flags || []).length;
     const statusClass = v.status === 'waiting' ? 'waiting' : v.status === 'in_progress' ? 'inprogress' : v.status === 'consulted' ? 'consulted' : 'plain';
     const statusLabel = v.status === 'waiting' ? 'WAITING' : v.status === 'in_progress' ? 'INTAKE' : v.status === 'consulted' ? 'DONE' : esc(v.status).toUpperCase();
@@ -212,6 +221,36 @@ function showToast() {
   const t = $('#toast'); t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2000);
 }
+
+// New patient notification: banner + sound (CSP-safe, WebAudio beep)
+function notifyNewPatient(v) {
+  if (!v) return;
+  $('#notifyText').textContent = `New patient waiting: ${v.name}${v.has_urgency ? ' 🚨 URGENT' : ''}`;
+  const b = $('#notifyBanner');
+  b.classList.remove('hidden');
+  b.classList.add('show');
+  setTimeout(() => { b.classList.remove('show'); b.classList.add('hidden'); }, 6000);
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const beep = (freq, t0, dur) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = freq; o.type = 'sine';
+      g.gain.setValueAtTime(0.001, ctx.currentTime + t0);
+      g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t0 + dur);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(ctx.currentTime + t0); o.stop(ctx.currentTime + t0 + dur + 0.02);
+    };
+    beep(880, 0, 0.18); beep(660, 0.22, 0.25); // ding-dong
+  } catch (_) {}
+}
+
+// Search filter
+let searchTerm = '';
+$('#searchInput').addEventListener('input', (e) => {
+  searchTerm = e.target.value.toLowerCase().trim();
+  renderQueue();
+});
 
 // wire buttons
 $('#btnSave').addEventListener('click', () => saveConsultation('consulted'));

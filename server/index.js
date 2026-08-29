@@ -132,7 +132,7 @@ async function finalizeVisit(visitId) {
 
   // Killer feature: 60s intake -> 10s doctor-ready summary.
   // Fire the AI summary generation in the background so the kiosk isn't blocked.
-  generateAISummary(visitId).catch((err) => console.error('AI summary failed:', err.message));
+  generateAISummary(visitId, patientLang).catch((err) => console.error('AI summary failed:', err.message));
   // One-line clinical snapshot for the doctor queue.
   generateOneLiner(visitId).catch((err) => console.error('one-liner failed:', err.message));
 
@@ -143,6 +143,21 @@ async function finalizeVisit(visitId) {
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
+// Returning-patient lookup — prefill the kiosk form when a known phone is entered
+app.get('/api/patients/lookup', async (req, res) => {
+  try {
+    const raw = String(req.query.phone || '').replace(/\s/g, '');
+    const phone = raw.startsWith('+91') ? raw : `+91${raw}`;
+    if (!/^\+91\d{10}$/.test(phone)) return res.json({ found: false });
+    const { rows } = await pool.query(
+      'SELECT name, age, gender, abha_id FROM patients WHERE phone = $1', [phone]);
+    if (rows.length === 0) return res.json({ found: false });
+    res.json({ found: true, patient: rows[0] });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
 // Start a visit
 app.post('/api/visits', rateLimit({ max: 30, windowMs: 10 * 60_000, name: 'visits' }), async (req, res) => {
   try {
@@ -151,12 +166,15 @@ app.post('/api/visits', rateLimit({ max: 30, windowMs: 10 * 60_000, name: 'visit
     const phone = String(req.body.phone || '').trim().replace(/\s/g, '');
     const age = req.body.age;
     const gender = req.body.gender ? String(req.body.gender).trim().slice(0, 20) : null;
+    const abha_id = req.body.abha_id ? String(req.body.abha_id).trim().slice(0, 30) : null;
     const SUPPORTED_LANGS = ['hi', 'en', 'pa', 'mr', 'gu', 'te', 'kn', 'ta', 'bn', 'ml', 'ur', 'bho', 'pah', 'as', 'or'];
     const language = SUPPORTED_LANGS.includes(req.body.language) ? req.body.language : 'en';
     const ayush_mode = req.body.ayush_mode !== false;
 
     if (name.length < 2 || name.length > 80)
       return res.status(400).json({ error: 'Name must be 2–80 characters' });
+    if (/[<>]/.test(name))
+      return res.status(400).json({ error: 'Name contains invalid characters' });
     if (!/^(\+91)?\d{10}$/.test(phone))
       return res.status(400).json({ error: 'Phone must be a 10-digit Indian number' });
     if (age !== undefined && age !== null && age !== '') {
@@ -167,16 +185,51 @@ app.post('/api/visits', rateLimit({ max: 30, windowMs: 10 * 60_000, name: 'visit
 
     let { rows } = await pool.query('SELECT * FROM patients WHERE phone = $1', [phone]);
     let patient;
+    let returning = null;
     if (rows.length === 0) {
       ({ rows } = await pool.query(
-        `INSERT INTO patients (name, phone, age, gender, preferred_language)
-         VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-        [name, phone, age || null, gender, language]
+        `INSERT INTO patients (name, phone, age, gender, preferred_language, abha_id)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+        [name, phone, age || null, gender, language, abha_id]
       ));
       patient = rows[0];
     } else {
       patient = rows[0];
+      // Returning patient — capture prior details for prefill on the kiosk
+      returning = {
+        name: patient.name, age: patient.age, gender: patient.gender, abha_id: patient.abha_id,
+      };
+      // update any new/changed fields
+      const upd = [];
+      if (abha_id && patient.abha_id !== abha_id) upd.push(`abha_id='${abha_id.replace(/'/g, "''")}'`);
+      if (gender && patient.gender !== gender) upd.push(`gender='${gender.replace(/'/g, "''")}'`);
+      if (upd.length) await pool.query(`UPDATE patients SET ${upd.join(',')} WHERE id=$1`, [patient.id]);
     }
+
+    // Duplicate / resubmit guard: if this patient already has an active visit
+    // (in_progress or waiting), don't stack a second one — return the existing.
+    const { rows: active } = await pool.query(
+      `SELECT id, token, status FROM visits
+        WHERE patient_id=$1 AND status IN ('in_progress','waiting')
+        ORDER BY id DESC LIMIT 1`,
+      [patient.id]
+    );
+    if (active.length > 0) {
+      const existing = active[0];
+      const payload = {
+        visitId: existing.id, patientId: patient.id, token: existing.token,
+        returning, resumed: true,
+      };
+      if (existing.status === 'in_progress') {
+        payload.currentQuestion = await currentQuestion(existing.id);
+      } else {
+        // waiting: they already finished — let the kiosk go straight to the queue screen
+        payload.status = 'waiting';
+        payload.done = true;
+      }
+      return res.status(200).json(payload);
+    }
+
     const { rows: v } = await pool.query(
       `INSERT INTO visits (patient_id, ayush_mode, token) VALUES ($1,$2,$3) RETURNING *`,
       [patient.id, ayush_mode, makeToken()]
@@ -184,8 +237,36 @@ app.post('/api/visits', rateLimit({ max: 30, windowMs: 10 * 60_000, name: 'visit
     const question = await currentQuestion(v[0].id);
     res.status(201).json({
       visitId: v[0].id, patientId: patient.id, token: v[0].token,
-      currentQuestion: question,
+      currentQuestion: question, returning,
     });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+// Queue position for a visit — how many people are ahead in the waiting room
+app.get('/api/visits/:id/position', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, status FROM visits WHERE id=$1`, [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'visit not found' });
+    const visit = rows[0];
+    if (visit.status === 'consulted') return res.json({ position: null, status: 'consulted', ahead: 0 });
+    const { rows: ahead } = await pool.query(
+      `SELECT count(*)::int AS n FROM visits
+        WHERE status IN ('in_progress','waiting')
+          AND id < $1
+          AND (red_flags = '[]'::jsonb OR NOT has_urgency)`,
+      [req.params.id]
+    );
+    const { rows: urgentAhead } = await pool.query(
+      `SELECT count(*)::int AS n FROM visits
+        WHERE status IN ('in_progress','waiting') AND id < $1 AND has_urgency`,
+      [req.params.id]
+    );
+    // urgent patients jump the queue — a non-urgent patient waits behind them
+    const position = 1 + ahead[0].n + urgentAhead[0].n;
+    res.json({ position, status: visit.status, ahead: position - 1, urgentAhead: urgentAhead[0].n });
   } catch (err) {
     sendError(res, err);
   }
@@ -462,7 +543,12 @@ app.put('/api/doctor/visits/:id', async (req, res) => {
 // (Re)generate the AI clinical summary for a visit — doctor-triggered
 app.post('/api/doctor/visits/:id/ai-summary', async (req, res) => {
   try {
-    const summary = await generateAISummary(req.params.id);
+    const { rows: langRows } = await pool.query(
+      `SELECT p.preferred_language FROM visits v JOIN patients p ON p.id = v.patient_id WHERE v.id = $1`,
+      [req.params.id]
+    );
+    const lang = langRows[0]?.preferred_language || 'en';
+    const summary = await generateAISummary(req.params.id, lang);
     res.json({ saved: true, ai_summary: summary });
   } catch (err) {
     sendError(res, err);
@@ -485,6 +571,12 @@ app.get('/api/doctor/visits/:id/pdf', async (req, res) => {
 // Static doctor dashboard
 app.get('/doctor', (_req, res) => res.sendFile(path.join(__dirname, 'doctor.html')));
 app.get('/doctor/', (_req, res) => res.sendFile(path.join(__dirname, 'doctor.html')));
+app.get('/doctor.js', (_req, res) => res.sendFile(path.join(__dirname, 'doctor.js')));
+app.get('/doctor.css', (_req, res) => res.sendFile(path.join(__dirname, 'doctor.css')));
+
+// Waiting-area queue screen (TV mode — no PIN, public display)
+app.get('/queue', (_req, res) => res.sendFile(path.join(__dirname, 'queue.html')));
+app.get('/queue/', (_req, res) => res.sendFile(path.join(__dirname, 'queue.html')));
 
 // Serve the built React kiosk (client/dist) — same origin as the API.
 const DIST = path.join(__dirname, '..', 'client', 'dist');

@@ -27,8 +27,10 @@ export function securityHeaders(req, res, next) {
 //    Good enough for a hackathon: resets each minute, no persistence.
 const buckets = new Map();
 setInterval(() => buckets.clear(), 60_000).unref();
+const IS_TEST = process.env.NODE_ENV === 'test';
 
 export function rateLimit({ windowMs = 60_000, max = 60, name = 'rl' }) {
+  if (IS_TEST) return (req, res, next) => next(); // skip in tests
   return (req, res, next) => {
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
     const key = `${name}:${ip}`;
